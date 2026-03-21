@@ -1,9 +1,14 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-#from . import schemas, database, models
-from . import crud, schemas, database
+from . import crud, schemas, database, models
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with database.engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.create_all)
+    yield
+    
+app = FastAPI(lifespan=lifespan)
 
 async def get_db():
     async with database.AsyncSessionlocal() as session:

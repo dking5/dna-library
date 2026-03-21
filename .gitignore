@@ -1,16 +1,16 @@
-# Python 虚拟环境
+# Python virtual environment
 .venv/
 venv/
 __pycache__/
 *.py[cod]
 
-# 本地数据库 (重要：不要把你的测试数据传上去)
+# local dababase files
 *.db
 *.sqlite3
 
-# 环境变量与密钥
+# environment variables
 .env
 
-# 编辑器配置
+# IDE specific files
 .vscode/
 .idea/

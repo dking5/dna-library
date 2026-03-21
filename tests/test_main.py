@@ -25,7 +25,6 @@ async def setup_db():
         from app.database import Base
         await conn.run_sync(Base.metadata.create_all)
     yield
-    # 测试结束，内存释放，数据自然消失
 
 async def test_create_gene():
     transport = ASGITransport(app=app)
