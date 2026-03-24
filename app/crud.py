@@ -1,3 +1,6 @@
+from Bio import SeqIO
+from io import StringIO
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from . import models, schemas
@@ -7,14 +10,20 @@ async def get_gene(db: AsyncSession, gene_id: int):
     return result.scalars().first()
 
 async def create_gene(db: AsyncSession, gene: schemas.GeneCreate):
-    db_gene = models.Gene(**gene.model_dump())
+    computed_gc_content = calculate_dna_stats(gene.sequence)["gc_content"]
+    db_gene = models.Gene(
+        label=gene.label,
+        sequence=gene.sequence.replace('\n', ''),
+        gc_content=computed_gc_content,
+        description=gene.description
+    )
     db.add(db_gene)
     await db.commit()
     await db.refresh(db_gene)
     return db_gene
 
 def calculate_dna_stats(sequence: str) -> dict:
-    seq = sequence.upper()
+    seq = sequence.replace('\n', '').upper()
     counts = {
         "a_count": seq.count('A'),
         "t_count": seq.count('T'),
@@ -39,7 +48,7 @@ async def get_genes_by_label(db: AsyncSession, label: str):
     return result.scalars().first()
 
 async def get_genes_by_sequence(db: AsyncSession, sequence: str):
-    result = await db.execute(select(models.Gene).where(models.Gene.sequence.contains(sequence)))
+    result = await db.execute(select(models.Gene).where(models.Gene.sequence.contains(sequence.upper())))
     return result.scalars().all()
 
 async def delete_gene(db: AsyncSession, gene_id: int):
@@ -61,3 +70,26 @@ async def update_gene(db:AsyncSession, gene_id:int, gene:schemas):
         await db.commit()
         await db.refresh(db_gene)
     return db_gene
+
+async def bulk_create_genes_from_fasta(db: AsyncSession, fasta_content: str):
+    fasta_io = StringIO(fasta_content)
+
+    new_genes = []
+    for record in SeqIO.parse(fasta_io, "fasta"):
+        label = record.id
+        sequence = str(record.seq).upper()
+        description = record.description
+        computed_gc_content = calculate_dna_stats(sequence)["gc_content"]
+
+        db_gene = models.Gene(
+            label=label,
+            sequence=sequence,
+            gc_content=computed_gc_content,
+            description=description
+        )
+        new_genes.append(db_gene)
+    if new_genes:
+        db.add_all(new_genes)
+        await db.commit()
+    
+    return len(new_genes)
