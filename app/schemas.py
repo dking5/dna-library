@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, computed_field
 from typing import Optional
+from .utils import get_reverse_complement
 
 class GeneStats(BaseModel):
     a_count: int
@@ -21,3 +22,11 @@ class Gene(GeneBase):
     gc_content: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def reverse_complement(self) -> str:
+        return get_reverse_complement(self.sequence)
+
+
+

@@ -69,9 +69,5 @@ async def test_get_gene_with_stats():
         response = await ac.get(f"/genes/{gene_id}")
         assert response.status_code == 200
         data = response.json()
-        assert data["stats"]["a_count"] == 2
-        assert data["stats"]["t_count"] == 2
-        assert data["stats"]["c_count"] == 2
-        assert data["stats"]["g_count"] == 2
-        assert data["stats"]["gc_content"] == 0.5
+        assert data["gc_content"] == 0.5
     

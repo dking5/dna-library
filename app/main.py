@@ -2,13 +2,21 @@ from contextlib import asynccontextmanager
 import json
 from linecache import cache
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from redis import Redis
+from sqlalchemy import select
 from . import crud, schemas, database, models
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with database.engine.begin() as conn:
-        await conn.run_sync(models.Base.metadata.create_all)
+    #async with database.engine.begin() as conn:
+    #    await conn.run_sync(models.Base.metadata.create_all)
+    async with database.AsyncSessionLocal() as db:
+        await crud.warmup_gene_cache(db, database.redis_client)
+    
     yield
+
+    await database.redis_client.close()
+
     
 app = FastAPI(lifespan=lifespan)
 
@@ -74,8 +82,14 @@ async def process_fasta_in_background(db: database.AsyncSession, fasta_str: str,
     print("[Background] Starting to parse FASTA...")
     num_genes = await crud.bulk_create_genes_from_fasta(db, fasta_content=fasta_str)
     if num_genes > 0:
+        keys = []
         async for key in cache.scan_iter("search:*"):
-            await cache.delete(key)
+            keys.append(key)
+        if keys:
+            async with cache.pipeline(transaction=False) as pipe:
+                for key in keys:
+                    await pipe.unlink(key)
+                await pipe.execute()
         print("[Background] Cleared Redis Cache after FASTA upload.")
     else :
         print("[Background] No genes were created from the FASTA file.")
