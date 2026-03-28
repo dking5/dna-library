@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Database Service (PostgreSQL)
+  db:
+    image: postgres:15
+    container_name: dna_db_container
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: dna_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistent storage so your DNA data survives container restarts
+      - postgres_data:/var/lib/postgresql/data
+
+  # Cache Service (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: dna_redis_container
+    # Enable AOF (Append Only File) for data persistence
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+
+  # FastAPI Application Service
+  web:
+    build: .
+    container_name: dna_app_container
+    ports:
+      - "8000:8000"
+    environment:
+      # IMPORTANT: In Docker, services use their names as hostnames
+      # We point to 'db' and 'redis' instead of 'localhost'
+      DATABASE_URL: postgresql+asyncpg://user:password@db:5432/dna_db
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      # Ensures database and redis start before the web app
+      - db
+      - redis
+
+# Named volume for database persistence
+volumes:
+  postgres_data:

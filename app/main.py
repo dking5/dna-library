@@ -1,15 +1,17 @@
 from contextlib import asynccontextmanager
 import json
 from linecache import cache
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from redis import Redis
-from sqlalchemy import select
+from sqlalchemy import select,text
 from . import crud, schemas, database, models
+from app.api.genes import gene_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    #async with database.engine.begin() as conn:
-    #    await conn.run_sync(models.Base.metadata.create_all)
+    async with database.engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await conn.run_sync(models.Base.metadata.create_all)
     async with database.AsyncSessionLocal() as db:
         await crud.warmup_gene_cache(db, database.redis_client)
     
@@ -19,6 +21,7 @@ async def lifespan(app: FastAPI):
 
     
 app = FastAPI(lifespan=lifespan)
+app.include_router(gene_router, prefix="/api/v1", tags=["Genes Management"])
 
 @app.post("/genes/", response_model=schemas.Gene)
 async def create_gene(gene: schemas.GeneCreate, db: database.AsyncSession = Depends(database.get_db)):

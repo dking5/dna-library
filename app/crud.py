@@ -6,7 +6,7 @@ from io import StringIO
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import insert
+from sqlalchemy import delete, insert
 from . import models, schemas
 
 async def get_gene(db: AsyncSession, gene_id: int):
@@ -138,3 +138,39 @@ async def warmup_gene_cache(db: AsyncSession, redis: Redis, limit=10):
         await redis.hset("genes_meta_hash", mapping=mapping)
         return len(genes)
     return 0
+
+async def merge_genes_atomic(db: AsyncSession, redis: Redis, id_a: int, id_b: int, new_label: str):
+    async with db.begin():
+        stmt_a = select(models.Gene).where(models.Gene.id == id_a).with_for_update()
+        stmt_b = select(models.Gene).where(models.Gene.id == id_b).with_for_update()
+
+        res_a = await db.execute(stmt_a)
+        res_b = await db.execute(stmt_b)
+        gene_a = res_a.scalar_one_or_none()
+        gene_b = res_b.scalar_one_or_none()
+
+        if not gene_a or not gene_b:
+            raise ValueError("One or both genes not found")
+        
+        merged_sequence = gene_a.sequence + gene_b.sequence
+        new_gene = models.Gene(
+            label=new_label,
+            sequence=merged_sequence,
+            gc_content=calculate_dna_stats(merged_sequence)["gc_content"],
+            description=f"Merged from {gene_a.id} and {gene_b.id}"
+        )
+
+        db.add(new_gene)
+        await db.execute(delete(models.Gene).where(models.Gene.id.in_([id_a, id_b])))
+        await db.flush()
+
+    await redis.hdel("genes_meta_hash", str(id_a), str(id_b))
+    new_meta={
+        "id": new_gene.id,
+        "label": new_gene.label,
+        "gc_content": new_gene.gc_content,        
+    }
+    
+    return new_gene
+    
+                         

@@ -15,7 +15,8 @@ async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
 
-redis_client = redis.from_url("redis://localhost:6379",decode_responses=True)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 async def get_redis():
     yield redis_client
