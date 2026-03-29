@@ -1,6 +1,7 @@
 # tests/test_main.py
 import pytest
 import pytest_asyncio
+import os
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.database import get_db
@@ -10,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 pytestmark = pytest.mark.asyncio
 
 BASE_URL = "http://testserver"
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 test_engine = create_async_engine(TEST_DATABASE_URL)
 TestSessionLocal = sessionmaker(test_engine, class_=AsyncSession)
 

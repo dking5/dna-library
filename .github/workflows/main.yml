@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  # Fix the Node.js 20 deprecation warning
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -46,7 +50,7 @@ jobs:
         # Inject the CI database URL to override local/production settings
         DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/dna_db_test
       run: |
-        pytest
+        python -m pytest
     
     - name: Build Docker Image
       run: |
