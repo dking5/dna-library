@@ -3,6 +3,7 @@ import pytest
 import pytest_asyncio
 import os
 from httpx import AsyncClient, ASGITransport
+from sqlalchemy import text
 from app.main import app
 from app.database import get_db
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -24,9 +25,13 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
     async with test_engine.begin() as conn:
+        if "postgresql" in str(test_engine.url):
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         from app.database import Base
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
+    await test_engine.dispose()
 
 async def test_create_gene():
     transport = ASGITransport(app=app)

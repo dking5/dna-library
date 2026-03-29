@@ -11,7 +11,7 @@ class GeneStats(BaseModel):
 
 class GeneBase(BaseModel):
     label: str = Field(..., min_length=3)
-    sequence: str = Field(..., pattern="^[ATCGNatcgn\s]+$")
+    sequence: str = Field(..., pattern=r"^[ATCGNatcgn\s]+$")
     description: Optional[str] = None
 
 class GeneCreate(GeneBase):
