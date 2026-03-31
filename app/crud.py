@@ -140,6 +140,7 @@ async def warmup_gene_cache(db: AsyncSession, redis: Redis, limit=10):
     return 0
 
 async def merge_genes_atomic(db: AsyncSession, redis: Redis, id_a: int, id_b: int, new_label: str):
+    result_data = {}
     async with db.begin():
         stmt_a = select(models.Gene).where(models.Gene.id == id_a).with_for_update()
         stmt_b = select(models.Gene).where(models.Gene.id == id_b).with_for_update()
@@ -161,16 +162,22 @@ async def merge_genes_atomic(db: AsyncSession, redis: Redis, id_a: int, id_b: in
         )
 
         db.add(new_gene)
+        await db.flush()  # Ensure new_gene gets an ID
+        result_data["id"] = new_gene.id
+        result_data["label"] = new_gene.label
+        result_data["gc_content"] = new_gene.gc_content
+        result_data["sequence"] = new_gene.sequence
         await db.execute(delete(models.Gene).where(models.Gene.id.in_([id_a, id_b])))
         await db.flush()
 
     await redis.hdel("genes_meta_hash", str(id_a), str(id_b))
     new_meta={
-        "id": new_gene.id,
-        "label": new_gene.label,
-        "gc_content": new_gene.gc_content,        
+        "id": result_data["id"],
+        "label": result_data["label"],
+        "gc_content": result_data["gc_content"],        
     }
+    await redis.hset("genes_meta_hash", str(result_data["id"]), json.dumps(new_meta))
     
-    return new_gene
+    return models.Gene(**result_data)
     
                          
