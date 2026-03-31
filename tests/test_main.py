@@ -1,8 +1,6 @@
 # tests/test_main.py
+import asyncio
 import json
-
-import json
-
 import pytest
 import pytest_asyncio
 import os
@@ -22,17 +20,18 @@ pytestmark = pytest.mark.asyncio
 
 BASE_URL = "http://testserver"
 TEST_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+#TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 test_engine = create_async_engine(TEST_DATABASE_URL)
 TestSessionLocal = sessionmaker(test_engine, class_=AsyncSession)
 
-async def override_get_db():
-    async with TestSessionLocal() as session:
-        yield session
-
-app.dependency_overrides[get_db] = override_get_db
-
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
+    async def override_get_db():
+        async with TestSessionLocal() as session:
+            yield session
+    
+    app.dependency_overrides[get_db] = override_get_db
+
     async with test_engine.begin() as conn:
         if "postgresql" in str(test_engine.url):
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
@@ -40,7 +39,17 @@ async def setup_db():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
+    app.dependency_overrides.clear()
     await test_engine.dispose()
+
+mock_redis = AsyncMock()
+@pytest.fixture(autouse=True)
+def override_redis_dependency():
+    mock_redis.get = AsyncMock(return_value=None)
+    mock_redis.set = AsyncMock(return_value=True)
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+    yield
+    app.dependency_overrides.clear()
 
 @pytest_asyncio.fixture
 async def client():
@@ -103,11 +112,12 @@ async def test_get_gene_with_stats():
             "sequence": "ATCGATCG"
         })
         if response.status_code == 400:
-            response = await ac.get("/api/v1/genes/search?q=TEST-2")
+            response = await ac.get("/api/v1/genes/search?q=ATCGATCG")
             assert response.status_code == 200
+            data = response.json()[0]
         else:
             assert response.status_code == 200
-        data = response.json()
+            data = response.json()
         gene_id = data["id"]
 
         # Now, retrieve the gene and check stats
@@ -119,13 +129,13 @@ async def test_get_gene_with_stats():
 async def test_update_gene_not_found():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url=BASE_URL) as ac:
-        response = await ac.put("/api/v1/genes/genes/99999", json={"label": "NEW", "sequence": "ATCG"})
+        response = await ac.put("/api/v1/genes/99999", json={"label": "NEW", "sequence": "ATCG"})
         assert response.status_code == 404
 
 async def test_delete_gene_success():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url=BASE_URL) as ac:
-        res = await ac.post("/api/v1/genes/", json={"label": "TO-DEL", "sequence": "ATCG"})
+        res = await ac.post("/api/v1/genes/", json={"label": "TO-BE-DELETED2", "sequence": "ATCG"})
         gid = res.json()["id"]
         del_res = await ac.delete(f"/api/v1/genes/{gid}")
         assert del_res.status_code == 200
@@ -137,6 +147,24 @@ async def test_upload_fasta_invalid_type():
         response = await ac.post("/api/v1/genes/upload-fasta/", files=files)
         assert response.status_code == 400
         assert "Invalid file type" in response.json()["detail"]
+
+async def test_update_genes_with_cache():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url=BASE_URL) as ac:
+        res = await ac.post("/api/v1/genes/", json={"label": "TO-BE-UPDATED2", "sequence": "ATCGATCGATCGATCG"})
+        if res.status_code == 400:
+            res = await ac.get("/api/v1/genes/search?q=ATCGATCGATCGATCG")
+            assert res.status_code == 200
+            data = res.json()[0]            
+        else:
+            assert res.status_code == 200
+            data = res.json()
+        gid = res.json()["id"]
+        res1 = await ac.put(f"/api/v1/genes/{gid}", json={"label": "UPDATED2", "sequence": "ATCGATCGATCGATCG"})
+        assert res1.status_code == 200
+        res2 = await ac.get(f"/api/v1/genes/{gid}")
+        assert res2.status_code == 200
+        assert res2.json()["sequence"] == "ATCGATCGATCGATCG"
 
 @pytest.mark.asyncio
 async def test_process_fasta_logic_directly():
@@ -158,17 +186,6 @@ async def test_process_fasta_logic_directly():
             assert any(g.label == "DIRECT-1" for g in genes)
             mock_cache.scan_iter.assert_called_with("search:*")
             await db.commit() 
-
-async def test_update_genes_with_cache():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url=BASE_URL) as ac:
-        res = await ac.post("/api/v1/genes/", json={"label": "TO-DEL", "sequence": "ATCG"})
-        gid = res.json()["id"]
-        res1 = await ac.put(f"/api/v1/genes/{gid}", json={"label": "UPDATED", "sequence": "ATCG"})
-        assert res1.status_code == 200
-        res2 = await ac.get(f"/api/v1/genes/{gid}")
-        assert res2.status_code == 200
-        assert res2.json()["sequence"] == "ATCG"
 
 @pytest.mark.asyncio
 async def test_get_gene_metadata_pure_mock():
