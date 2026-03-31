@@ -67,15 +67,26 @@ async def test_create_gene():
         assert "id" in data
 
 async def test_search_genes_with_cache():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url=BASE_URL) as ac:
-        await ac.post("/api/v1/genes/", json={"label": "CACHE-TEST", "sequence": "AAAA"})
-        res1 = await ac.get("/api/v1/genes/search", params={"q": "AAAA"})
-        assert res1.status_code == 200
-        
-        res2 = await ac.get("/api/v1/genes/search", params={"q": "AAAA"})
-        assert res2.status_code == 200
-        
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    mock_redis.set.return_value = True
+    mock_redis.hset.return_value = 1
+
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url=BASE_URL) as ac:
+            await ac.post("/api/v1/genes/", json={"label": "CACHE-TEST", "sequence": "AAAA"})
+            res1 = await ac.get("/api/v1/genes/search", params={"q": "AAAA"})
+            assert res1.status_code == 200
+            
+            res2 = await ac.get("/api/v1/genes/search", params={"q": "AAAA"})
+            assert res2.status_code == 200
+            
+            assert mock_redis.get.called
+    finally:
+        app.dependency_overrides.clear()
 
 async def test_get_non_existent_gene():
     transport = ASGITransport(app=app)
