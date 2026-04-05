@@ -87,12 +87,14 @@ async def bulk_create_genes_from_fasta(db: AsyncSession, fasta_content: str):
         sequence = str(record.seq).upper()
         description = record.description
         computed_gc_content = calculate_dna_stats(sequence)["gc_content"]
+        vector = generate_dna_embedding(sequence)
 
         gene_dict = {
             "label": label,
             "sequence": sequence,
             "gc_content": computed_gc_content,
-            "description": description
+            "description": description,
+            "embedding": vector
         }
         new_genes_data.append(gene_dict)
         total_count += 1 
@@ -161,7 +163,8 @@ async def merge_genes_atomic(db: AsyncSession, redis: Redis, id_a: int, id_b: in
             label=new_label,
             sequence=merged_sequence,
             gc_content=calculate_dna_stats(merged_sequence)["gc_content"],
-            description=f"Merged from {gene_a.id} and {gene_b.id}"
+            description=f"Merged from {gene_a.id} and {gene_b.id}",
+            embedding=generate_dna_embedding(merged_sequence)
         )
 
         db.add(new_gene)
