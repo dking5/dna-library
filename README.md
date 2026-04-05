@@ -24,12 +24,7 @@ A high-performance asynchronous backend service designed for biological sequence
     docker-compose up -d --build
     ```
 
-2.  **Enable Vector Extension** (First-time setup):
-    ```bash
-    docker exec -it dna_db_container psql -U user -d dna_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
-    ```
-
-3.  **Run Automated Tests & Coverage Report**:
+2.  **Run Automated Tests & Coverage Report**:
     ```bash
     pytest --cov=app
     ```
@@ -38,7 +33,7 @@ A high-performance asynchronous backend service designed for biological sequence
 - [x] Asynchronous CRUD Infrastructure
 - [x] Similarity Search Experiment with **pgvector**
 - [x] Automated Integration Tests with 80%+ Coverage
-- [ ] Production Redis Integration
+- [x] Production Redis Integration
 - [ ] LLM-driven Genomic Functional Annotation
 - [ ] Distributed Task Processing with Celery
 

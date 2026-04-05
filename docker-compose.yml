@@ -23,6 +23,7 @@ services:
     command: redis-server --appendonly yes
     ports:
       - "6379:6379"
+    restart: always
 
   # FastAPI Application Service
   web:
@@ -31,10 +32,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # IMPORTANT: In Docker, services use their names as hostnames
-      # We point to 'db' and 'redis' instead of 'localhost'
       DATABASE_URL: postgresql+asyncpg://user:password@db:5432/dna_db
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       # Ensures database and redis start before the web app
       - db

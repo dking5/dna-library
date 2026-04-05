@@ -3,21 +3,33 @@ from fastapi import FastAPI, Depends
 from sqlalchemy import text
 from . import crud, database, models
 from app.api.genes import gene_router
+from .core.redis import redis_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup: Initialize Redis connection
+    await redis_manager.connect()
+
+    # Set up PostgresSQL extensions and tables, then warm up Redis cache
     async with database.engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(models.Base.metadata.create_all)
     async with database.AsyncSessionLocal() as db:
-        await crud.warmup_gene_cache(db, database.redis_client)
+        await crud.warmup_gene_cache(db, redis_manager.client)
     
     yield
+    # Shutdown: Clean up resources
+    await redis_manager.disconnect()
 
-    await database.redis_client.close()
-
-    
 app = FastAPI(lifespan=lifespan)
+
+@app.get("/health/redis")
+async def check_redis():
+    is_alive = await redis_manager.client.ping()
+    return {"redis_active": is_alive}
+
+
 app.include_router(gene_router, prefix="/api/v1/genes", tags=["Genes Management"])
 
 @app.get("/")

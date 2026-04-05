@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-import redis.asyncio as redis
+from .core.redis import redis_manager
 
 load_dotenv()
 
@@ -15,8 +15,5 @@ async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
-
 async def get_redis():
-    yield redis_client
+    yield redis_manager.client

@@ -5,8 +5,7 @@ from Bio import SeqIO
 from io import StringIO
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy import delete, insert
+from sqlalchemy import delete, insert, select
 
 from app.utils import generate_dna_embedding
 from . import models, schemas
