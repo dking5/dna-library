@@ -88,10 +88,10 @@ async def test_search_genes_with_cache():
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url=BASE_URL) as ac:
             await ac.post("/api/v1/genes/", json={"label": "CACHE-TEST", "sequence": "AAAA"})
-            res1 = await ac.get("/api/v1/genes/search", params={"q": "AAAA"})
+            res1 = await ac.get("/api/v1/genes/searches", params={"q": "AAAA"})
             assert res1.status_code == 200
             
-            res2 = await ac.get("/api/v1/genes/search", params={"q": "AAAA"})
+            res2 = await ac.get("/api/v1/genes/searches", params={"q": "AAAA"})
             assert res2.status_code == 200
             
             assert mock_redis.get.called
@@ -113,7 +113,7 @@ async def test_get_gene_with_stats():
             "sequence": "ATCGATCG"
         })
         if response.status_code == 400:
-            response = await ac.get("/api/v1/genes/search?q=ATCGATCG")
+            response = await ac.get("/api/v1/genes/searches?q=ATCGATCG")
             assert response.status_code == 200
             data = response.json()[0]
         else:
@@ -145,7 +145,7 @@ async def test_upload_fasta_invalid_type():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url=BASE_URL) as ac:
         files = {"file": ("test.txt", b"ATCG", "text/plain")}
-        response = await ac.post("/api/v1/genes/upload-fasta/", files=files)
+        response = await ac.post("/api/v1/genes/batches", files=files)
         assert response.status_code == 400
         assert "Invalid file type" in response.json()["detail"]
 
@@ -154,7 +154,7 @@ async def test_update_genes_with_cache():
     async with AsyncClient(transport=transport, base_url=BASE_URL) as ac:
         res = await ac.post("/api/v1/genes/", json={"label": "TO-BE-UPDATED2", "sequence": "ATCGATCGATCGATCG"})
         if res.status_code == 400:
-            res = await ac.get("/api/v1/genes/search?q=ATCGATCGATCGATCG")
+            res = await ac.get("/api/v1/genes/searches?q=ATCGATCGATCGATCG")
             assert res.status_code == 200
             data = res.json()[0]            
         else:
@@ -198,7 +198,7 @@ async def test_get_gene_metadata_pure_mock():
     mock_gene.label = "MOCK_GENE"
     mock_meta_json = json.dumps({"id": 123, "label": "MOCK_GENE"})
 
-    mock_redis.hget.return_value = None  # 缓存没命中
+    mock_redis.hget.return_value = None
     
     mock_execute_result = MagicMock()
     mock_execute_result.scalar_one_or_none.return_value = mock_gene
@@ -235,7 +235,7 @@ async def test_merge_genes_atomic_success():
     res_b = MagicMock()
     res_b.scalar_one_or_none.return_value = gene_b
     
-    mock_db.execute.side_effect = [res_a, res_b, AsyncMock()] # 前两次查询，第三次是 delete
+    mock_db.execute.side_effect = [res_a, res_b, AsyncMock()]
 
     with mock_patch("app.crud.calculate_dna_stats") as mock_calc:
         mock_calc.return_value = {"gc_content": 0.5}
@@ -262,7 +262,7 @@ async def test_merge_genes_atomic_not_found():
     mock_db.flush = AsyncMock()
 
     res = MagicMock()
-    res.scalar_one_or_none.return_value = None # 模拟找不到
+    res.scalar_one_or_none.return_value = None
     mock_db.execute.return_value = res
 
     with pytest.raises(ValueError, match="One or both genes not found"):
@@ -280,7 +280,7 @@ async def test_merge_genes_api_full_flow(client: AsyncClient):
         res2 = await ac.post("/api/v1/genes/", json={"label": "G22", "sequence": "GC"})
         g2 = res2.json()["id"]
         res3 = await ac.post(
-            "/api/v1/genes/merge/", 
+            "/api/v1/genes/merges/", 
             params={
                 "id_a": g1, 
                 "id_b": g2, 
@@ -292,7 +292,7 @@ async def test_merge_genes_api_full_flow(client: AsyncClient):
         assert res3.json()["label"] == "MERGED_API"
 
         res4 = await ac.post(
-            "/api/v1/genes/merge/", 
+            "/api/v1/genes/merges/", 
             params={
                 "id_a": 999998, 
                 "id_b": 999999, 

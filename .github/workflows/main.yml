@@ -19,6 +19,7 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg15
         env:
+          POSTGRES_USER: user
           POSTGRES_PASSWORD: password
           POSTGRES_DB: dna_db_test
         ports:
