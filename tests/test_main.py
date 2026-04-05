@@ -35,6 +35,7 @@ async def setup_db():
     async with test_engine.begin() as conn:
         if "postgresql" in str(test_engine.url):
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         from app.database import Base
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
