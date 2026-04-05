@@ -12,7 +12,7 @@ async def create_gene(gene: schemas.GeneCreate, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=400, detail="Gene with this label already exists")
     return await crud.create_gene(db=db, gene=gene)
 
-@gene_router.post("/upload-fasta/", status_code=202)
+@gene_router.post("/batches", status_code=202)
 async def upload_fasta(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: AsyncSession = Depends(get_db), cache = Depends(get_redis)):
     if not file.filename.endswith((".fasta", ".fa")):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a FASTA file.")
@@ -22,7 +22,7 @@ async def upload_fasta(background_tasks: BackgroundTasks, file: UploadFile = Fil
     background_tasks.add_task(process_fasta_in_background, db=db, fasta_str=fasta_str, cache=cache)
     return {"message": "File uploaded successfully. Processing in background..."}
 
-@gene_router.get("/search", response_model=list[schemas.Gene])
+@gene_router.get("/searches", response_model=list[schemas.Gene])
 async def search_genes(q: str, db: AsyncSession = Depends(get_db), cache = Depends(get_redis)):
     cache_key = f"search:{q.upper()}"
     cached_data = await cache.get(cache_key)
@@ -38,6 +38,10 @@ async def search_genes(q: str, db: AsyncSession = Depends(get_db), cache = Depen
     ]
     await cache.set(cache_key, json.dumps(results_as_dict), ex=3600)
     return db_genes
+
+@gene_router.get("/similarity-searches", response_model=list[schemas.Gene])
+async def search_genes(sequence: str, db: AsyncSession = Depends(get_db)):
+    return await crud.search_similar_genes(db, sequence)
 
 @gene_router.get("/{gene_id}", response_model=schemas.Gene)
 async def read_gene(gene_id: int, db: AsyncSession = Depends(get_db)):
@@ -79,7 +83,7 @@ async def process_fasta_in_background(db: AsyncSession, fasta_str: str, cache):
     else :
         print("[Background] No genes were created from the FASTA file.")
 
-@gene_router.post("/merge/")
+@gene_router.post("/merges/")
 async def merge_genes(id_a: int, id_b: int, label: str, db: AsyncSession = Depends(get_db), redis = Depends(get_redis)):
     try:
         new_gene = await crud.merge_genes_atomic(db, redis, id_a=id_a, id_b=id_b, new_label=label)
@@ -91,6 +95,3 @@ async def merge_genes(id_a: int, id_b: int, label: str, db: AsyncSession = Depen
         raise HTTPException(status_code=404, detail="One or both genes not found for merging.")
     return new_gene
 
-@gene_router.post("/search/similar", response_model=list[schemas.Gene])
-async def search_genes(sequence: str, db: AsyncSession = Depends(get_db)):
-    return await crud.search_similar_genes(db, sequence)
