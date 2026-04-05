@@ -7,6 +7,8 @@ from io import StringIO
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import delete, insert
+
+from app.utils import generate_dna_embedding
 from . import models, schemas
 
 async def get_gene(db: AsyncSession, gene_id: int):
@@ -15,11 +17,13 @@ async def get_gene(db: AsyncSession, gene_id: int):
 
 async def create_gene(db: AsyncSession, gene: schemas.GeneCreate):
     computed_gc_content = calculate_dna_stats(gene.sequence)["gc_content"]
+    vector_data = generate_dna_embedding(gene.sequence)
     db_gene = models.Gene(
         label=gene.label,
         sequence=gene.sequence.replace('\n', ''),
         gc_content=computed_gc_content,
-        description=gene.description
+        description=gene.description,
+        embedding=vector_data
     )
     db.add(db_gene)
     await db.commit()
@@ -179,5 +183,15 @@ async def merge_genes_atomic(db: AsyncSession, redis: Redis, id_a: int, id_b: in
     await redis.hset("genes_meta_hash", str(result_data["id"]), json.dumps(new_meta))
     
     return models.Gene(**result_data)
+
+async def search_similar_genes(db: AsyncSession, target_sequence: str, limit: int = 3):
+    target_vector = generate_dna_embedding(target_sequence)
+    query = (
+        select(models.Gene)
+        .order_by(models.Gene.embedding.l2_distance(target_vector))
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    return result.scalars().all()
     
                          

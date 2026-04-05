@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Float, Integer, String, DateTime, Index
 from sqlalchemy.sql import func
+from pgvector.sqlalchemy import Vector
 from .database import Base
 
 class Gene(Base):
@@ -11,6 +12,7 @@ class Gene(Base):
     gc_content = Column(Float, nullable=True, index=True)
     description = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    embedding = Column(Vector(3), nullable=True)
     
     __table_args__ = (
         Index(

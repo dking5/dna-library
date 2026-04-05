@@ -91,3 +91,6 @@ async def merge_genes(id_a: int, id_b: int, label: str, db: AsyncSession = Depen
         raise HTTPException(status_code=404, detail="One or both genes not found for merging.")
     return new_gene
 
+@gene_router.post("/search/similar", response_model=list[schemas.Gene])
+async def search_genes(sequence: str, db: AsyncSession = Depends(get_db)):
+    return await crud.search_similar_genes(db, sequence)

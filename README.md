@@ -1,45 +1,48 @@
 # Bio-AI Sequence Management System 🧬
 
-A high-performance asynchronous backend service designed for biological sequence data management and AI-driven analysis.
+A high-performance asynchronous backend service designed for biological sequence data management and **AI-driven similarity analysis**.
 
-## 🌟 Core Features
+## 🚀 Core Features
+* **AI Vector Search**: Integrated **pgvector** to support genomic sequence similarity searches based on high-dimensional L2 distance rather than simple string matching.
 * **High-Performance Async Architecture**: Built with **FastAPI** and **SQLAlchemy 2.0**, fully leveraging non-blocking I/O for concurrent sequence processing.
-* **Production-Grade Validation**: Utilizes **Pydantic V2** for strict data validation of genomic sequences (ATCG integrity).
-* **Professional Test Suite**: Achieves 90%+ coverage using **Pytest-asyncio** with a fully isolated in-memory database testing environment.
-* **Bio-Feature Extraction**: Automatic calculation of DNA base composition (A/T/C/G counts) and GC-content percentages.
+* **Production-Grade Containerization**: Orchestrated via **Docker Compose** with a specialized PostgreSQL 15 image (pgvector enabled) and a Redis caching layer.
+* **Rigorous Test Suite**: Achieves **83% code coverage** using **Pytest-asyncio** with isolated environments, ensuring the reliability of core business logic.
+* **Automated Bio-Feature Extraction**: Automatically calculates DNA mathematical features (GC-content, A-content, and normalized length) to generate 3-dimensional AI embeddings.
 
 ## 🛠️ Tech Stack
 * **Language**: Python 3.12+
 * **Framework**: FastAPI, Uvicorn
-* **Database**: PostgreSQL (Development: SQLite)
+* **Database**: **PostgreSQL 15 (with pgvector)**
+* **Cache**: Redis 7 (Mocked in tests)
 * **ORM**: SQLAlchemy 2.0 (Async)
-* **Testing**: Pytest, HTTPX
+* **Infrastructure**: Docker, Docker Compose
 
-## 🚀 Quick Start
+## 📦 Quick Start
 
-1.  **Install Dependencies**:
+1.  **Spin up the Containerized Environment**:
     ```bash
-    pip install -r requirements.txt
+    docker-compose up -d --build
     ```
 
-2.  **Run Service**:
+2.  **Enable Vector Extension** (First-time setup):
     ```bash
-    uvicorn app.main:app --reload
+    docker exec -it dna_db_container psql -U user -d dna_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
     ```
 
-3.  **Run Automated Tests**:
+3.  **Run Automated Tests & Coverage Report**:
     ```bash
-    python -m pytest
+    pytest --cov=app
     ```
 
-## 📈 Roadmap
+## 🗺️ Roadmap
 - [x] Asynchronous CRUD Infrastructure
-- [x] Automated Integration Test Suite
-- [ ] Redis-backed Caching Layer (Week 2)
-- [ ] LLM-driven Genomic Functional Annotation (Week 3)
-- [ ] Distributed Task Processing with Celery (Week 3)
+- [x] Similarity Search Experiment with **pgvector**
+- [x] Automated Integration Tests with 80%+ Coverage
+- [ ] Production Redis Integration
+- [ ] LLM-driven Genomic Functional Annotation
+- [ ] Distributed Task Processing with Celery
 
-## 💡 Engineering Highlights
-* **Dependency Injection**: Implemented robust DI patterns for seamless database session management and testing overrides.
-* **Error Handling**: Centralized exception handling with clear HTTP semantics (400, 404, 500).
-* **TDD Mindset**: Developed following Test-Driven Development principles to ensure system reliability.
+## 🏗️ Engineering Highlights
+* **Environment Isolation**: Utilizes Docker Volumes and Dependency Injection (DI) patterns for seamless switching between development, testing, and production.
+* **Feature Engineering**: Translates biological logic (e.g., GC-content) into mathematical vectors, laying the groundwork for Large Language Model (LLM) integration.
+* **System Robustness**: Implemented Mocking strategies for Redis to ensure test independence and reliable CI/CD pipelines.

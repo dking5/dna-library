@@ -20,6 +20,7 @@ class GeneCreate(GeneBase):
 class Gene(GeneBase):
     id: int
     gc_content: Optional[float] = None
+    embedding: Optional[list[float]] = None
 
     model_config = ConfigDict(from_attributes=True)
 

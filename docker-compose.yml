@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Database Service (PostgreSQL)
   db:
-    image: postgres:15
+    image: pgvector/pgvector:pg15
     container_name: dna_db_container
     environment:
       POSTGRES_USER: user
