@@ -27,6 +27,8 @@ services:
 
   # FastAPI Application Service
   web:
+    env_file:
+      - .env
     build: .
     container_name: dna_app_container
     ports:
@@ -34,6 +36,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://user:password@db:5432/dna_db
       REDIS_URL: redis://redis:6379/0
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     depends_on:
       # Ensures database and redis start before the web app
       - db

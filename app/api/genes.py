@@ -2,6 +2,8 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from app import crud, schemas
 from app.database import AsyncSession, get_db, get_redis
+from app.services.ai_service import AIService
+from app.api.deps import get_ai_service
 
 gene_router = APIRouter(tags=["Genes Management"])
 
@@ -40,7 +42,7 @@ async def search_genes(q: str, db: AsyncSession = Depends(get_db), cache = Depen
     return db_genes
 
 @gene_router.get("/similarity-searches", response_model=list[schemas.Gene])
-async def search_genes(sequence: str, db: AsyncSession = Depends(get_db)):
+async def similarity_search_genes(sequence: str, db: AsyncSession = Depends(get_db)):
     return await crud.search_similar_genes(db, sequence)
 
 @gene_router.get("/{gene_id}", response_model=schemas.Gene)
@@ -95,3 +97,42 @@ async def merge_genes(id_a: int, id_b: int, label: str, db: AsyncSession = Depen
         raise HTTPException(status_code=404, detail="One or both genes not found for merging.")
     return new_gene
 
+@gene_router.post("/{gene_id}/analyses", status_code=200)
+async def analyze_gene_with_ai(
+    gene_id: int, 
+    db: AsyncSession = Depends(get_db),
+    ai_service: AIService = Depends(get_ai_service)
+):
+    """
+    Performs RAG-based analysis: 
+    1. Fetches the target gene by ID.
+    2. Searches for similar genes using pgvector.
+    3. Generates a biological report via Gemini 2.0.
+    """
+    
+    # 1. Fetch the target gene from PostgreSQL
+    target_gene = await crud.get_gene_with_stats(db, gene_id)
+    if not target_gene:
+        raise HTTPException(status_code=404, detail="Gene not found")
+
+    # 2. Retrieve context (Top 5 similar genes using your Week 2 vector search)
+    # Assuming target_gene has an 'embedding' field
+    similar_genes = await crud.search_similar_genes( 
+        target_sequence=target_gene.sequence, 
+        limit=5, 
+        db=db
+    )
+
+    # 3. Generate the AI Report
+    # This calls the async generate_dna_report we just built
+    report_text = await ai_service.summarize_gene_function(
+        target_gene=target_gene, 
+        similar_genes=similar_genes
+    )
+
+    return {
+        "gene_id": gene_id,
+        "label": target_gene.label,
+        "analysis_report": report_text,
+        "references_used": [g.label for g in similar_genes]
+    }
