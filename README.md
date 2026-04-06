@@ -34,7 +34,7 @@ A high-performance asynchronous backend service designed for biological sequence
 - [x] Similarity Search Experiment with **pgvector**
 - [x] Automated Integration Tests with 80%+ Coverage
 - [x] Production Redis Integration
-- [ ] LLM-driven Genomic Functional Annotation
+- [x] LLM-driven Genomic Functional Annotation
 - [ ] Distributed Task Processing with Celery
 
 ## 🏗️ Engineering Highlights
