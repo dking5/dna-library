@@ -1,7 +1,7 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, BackgroundTasks
 from app import crud, schemas
-from ..core.limiter import limiter
+from ..core.limiter import limiter, get_remote_address
 from app.database import AsyncSession, get_db, get_redis
 from app.services.ai_service import AIService
 from app.api.deps import get_ai_service
@@ -99,7 +99,7 @@ async def merge_genes(id_a: int, id_b: int, label: str, db: AsyncSession = Depen
     return new_gene
 
 @gene_router.post("/{gene_id}/analyses", status_code=200)
-@limiter.limit("1/minute", shared=True)
+@limiter.limit("1/minute", key_func=get_remote_address)
 async def analyze_gene_with_ai(
     request: Request,
     gene_id: int, 
