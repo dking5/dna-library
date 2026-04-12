@@ -5,6 +5,10 @@ from . import crud, database, models
 from app.api.genes import gene_router
 from .core.redis import redis_manager
 from prometheus_fastapi_instrumentator import Instrumentator
+from app.core.limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,6 +28,9 @@ async def lifespan(app: FastAPI):
     await redis_manager.disconnect()
 
 app = FastAPI(lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 @app.get("/health/redis")
 async def check_redis():

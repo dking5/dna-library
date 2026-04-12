@@ -43,9 +43,12 @@ A high-performance asynchronous backend service designed for biological sequence
 - [x] Production Redis Integration
 - [x] LLM-driven Genomic Functional Annotation
 - [x] Real-time Observability Stack (Prometheus/Grafana)
+- [x] API Rate Limiting & Security
 - [ ] Distributed Task Processing with Celery
 
 ## 🏗️ Engineering Highlights
 * **Environment Isolation**: Utilizes Docker Volumes and Dependency Injection (DI) patterns for seamless switching between development, testing, and production.
 * **Feature Engineering**: Translates biological logic (e.g., GC-content) into mathematical vectors, laying the groundwork for Large Language Model (LLM) integration.
 * **System Robustness**: Implemented Mocking strategies for Redis to ensure test independence and reliable CI/CD pipelines.
+* **Real-time Observability Stack**: Integrated Prometheus and Grafana to monitor system health and track p95 latency, specifically for long-running AI inference tasks.
+* **Defensive Rate Limiting**: Implemented global, IP-based request throttling via SlowAPI to protect Gemini API quotas and ensure service availability under high load.
