@@ -16,6 +16,7 @@ A high-performance asynchronous backend service designed for biological sequence
 * **Cache**: Redis 7 (Mocked in tests)
 * **ORM**: SQLAlchemy 2.0 (Async)
 * **Infrastructure**: Docker, Docker Compose
+* **Monitoring**: Prometheus, Grafana
 
 ## 📦 Quick Start
 
@@ -28,6 +29,12 @@ A high-performance asynchronous backend service designed for biological sequence
     ```bash
     pytest --cov=app
     ```
+2.  **Monitoring Access**:
+    ```
+    Prometheus: http://localhost:9090
+    Grafana: http://localhost:3000 (Default: admin/admin)
+    ```
+
 
 ## 🗺️ Roadmap
 - [x] Asynchronous CRUD Infrastructure
@@ -35,6 +42,7 @@ A high-performance asynchronous backend service designed for biological sequence
 - [x] Automated Integration Tests with 80%+ Coverage
 - [x] Production Redis Integration
 - [x] LLM-driven Genomic Functional Annotation
+- [x] Real-time Observability Stack (Prometheus/Grafana)
 - [ ] Distributed Task Processing with Celery
 
 ## 🏗️ Engineering Highlights

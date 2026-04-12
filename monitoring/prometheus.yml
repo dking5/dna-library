@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 5s # How often to ask the app for data
+
+scrape_configs:
+  - job_name: "dna-api"
+    static_configs:
+      - targets: ["web:8000"]
+    metrics_path: /metrics

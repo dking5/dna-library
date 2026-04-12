@@ -4,6 +4,7 @@ from sqlalchemy import text
 from . import crud, database, models
 from app.api.genes import gene_router
 from .core.redis import redis_manager
+from prometheus_fastapi_instrumentator import Instrumentator
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,3 +36,5 @@ app.include_router(gene_router, prefix="/api/v1/genes", tags=["Genes Management"
 @app.get("/")
 def root():
     return {"message": "Welcome to DNA Library API"}
+
+Instrumentator().instrument(app).expose(app)
