@@ -31,6 +31,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -49,7 +59,8 @@ jobs:
     - name: Run Tests with Coverage
       env:
         # Inject the CI database URL to override local/production settings
-        DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/dna_db_test
+        DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/dna_db_test
+        REDIS_URL: redis://localhost:6379
       run: |
         python -m pytest --cov=app --cov-report=term-missing
     

@@ -109,6 +109,29 @@ async def bulk_create_genes_from_fasta(db: AsyncSession, fasta_content: str):
     
     return total_count
 
+async def bulk_insert_genes(db: AsyncSession, genes_data: list[dict]):
+    if not genes_data:
+        return 0   
+    
+    batch_size = 100
+    for i in range(0, len(genes_data), batch_size):
+        batch = genes_data[i:i+batch_size]
+        await db.execute(insert(models.Gene), batch)
+    await db.commit()
+    return len(genes_data)
+
+def process_single_gene_task(label: str, sequence: str, description: str):
+    clean_seq = sequence.replace('\n', '').upper()
+    gc_content = calculate_dna_stats(clean_seq)["gc_content"]
+    embedding = generate_dna_embedding(clean_seq)
+    return {
+        "label": label,
+        "sequence": clean_seq,
+        "gc_content": gc_content,
+        "description": description,
+        "embedding": embedding
+    }
+    
 def serialize_gene_meta(gene: models.Gene) -> str:
     return json.dumps({
         "id": gene.id,

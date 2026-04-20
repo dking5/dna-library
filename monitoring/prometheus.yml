@@ -6,3 +6,6 @@ scrape_configs:
     static_configs:
       - targets: ["web:8000"]
     metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [job]
+        target_label: app_name

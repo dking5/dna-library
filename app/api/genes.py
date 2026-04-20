@@ -1,4 +1,6 @@
+import asyncio
 import json
+import concurrent
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, BackgroundTasks
 from app import crud, schemas
 from ..core.limiter import limiter, get_remote_address
@@ -17,6 +19,7 @@ async def create_gene(gene: schemas.GeneCreate, db: AsyncSession = Depends(get_d
 
 @gene_router.post("/batches", status_code=202)
 async def upload_fasta(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: AsyncSession = Depends(get_db), cache = Depends(get_redis)):
+    print(f"Received file: {file.filename}")
     if not file.filename.endswith((".fasta", ".fa")):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a FASTA file.")
     
@@ -72,7 +75,25 @@ async def update_gene(gene_id: int, gene: schemas.GeneCreate, db: AsyncSession =
 
 async def process_fasta_in_background(db: AsyncSession, fasta_str: str, cache):
     print("[Background] Starting to parse FASTA...")
-    num_genes = await crud.bulk_create_genes_from_fasta(db, fasta_content=fasta_str)
+    from Bio import SeqIO
+    from io import StringIO
+    fasta_io = StringIO(fasta_str)
+    records = [(r.id, str(r.seq), r.description) for r in SeqIO.parse(fasta_io, "fasta")]
+
+    if not records:
+        print("[Background] No valid FASTA records found. Exiting background task.")
+        return
+
+    loop = asyncio.get_running_loop()
+    try:
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            tasks = [loop.run_in_executor(pool, crud.process_single_gene_task, label, seq, desc) for label, seq, desc in records]
+        new_genes_data = await asyncio.gather(*tasks)
+    except Exception as e:  
+        print(f"[Background] Error during parellel gene processing: {e}")
+        return
+    
+    num_genes = await crud.bulk_insert_genes(db, new_genes_data)
     if num_genes > 0:
         keys = []
         async for key in cache.scan_iter("search:*"):
