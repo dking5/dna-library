@@ -53,6 +53,6 @@ app.include_router(gene_router, prefix="/api/v1/genes", tags=["Genes Management"
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to DNA Library APIs"}
+    return {"message": "Hello, Welcome to DNA Library APIs"}
 
 Instrumentator().instrument(app).expose(app)
