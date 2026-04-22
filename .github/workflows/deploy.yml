@@ -24,7 +24,7 @@ jobs:
 
     - name: Build and Push Image
       run: |
-        gcloud builds submit --tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dna-repo/dna-app:${{ github.sha }}
+        gcloud builds submit --tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dna-repo/dna-app:${{ github.sha }} --suppress-logs
 
     - name: Deploy to Cloud Run
       run: |
