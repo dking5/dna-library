@@ -17,3 +17,6 @@ __pycache__/
 
 # coverage reports
 .coverage
+
+# github key file
+github-key.json

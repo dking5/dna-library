@@ -13,16 +13,24 @@ from slowapi.middleware import SlowAPIMiddleware
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize Redis connection
-    await redis_manager.connect()
+    try:
+        await redis_manager.connect()
+        print("Successfully connected to Redis")
+    except Exception as e:
+        print(f"Redis connection failed: {e}. Continuing anyway...")
 
     # Set up PostgresSQL extensions and tables, then warm up Redis cache
-    async with database.engine.begin() as conn:
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await conn.run_sync(models.Base.metadata.create_all)
-    async with database.AsyncSessionLocal() as db:
-        await crud.warmup_gene_cache(db, redis_manager.client)
-    
+    try:
+        async with database.engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await conn.run_sync(models.Base.metadata.create_all)
+        async with database.AsyncSessionLocal() as db:
+            await crud.warmup_gene_cache(db, redis_manager.client)
+        print("Database initialized successfully")
+    except Exception as e:
+        print(f"Database initialization failed: {e}. Application will start without DB.")
+
     yield
     # Shutdown: Clean up resources
     await redis_manager.disconnect()

@@ -1,0 +1,43 @@
+# 1. Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 2. virtual environment
+.venv/
+venv/
+env/
+bin/
+lib/
+share/
+
+# 3. Git 
+.git/
+.gitignore
+
+# 4. local configuration
+.env
+*.key
+*.pem
+credentials.json
+
+# 5. local db and fasta file
+*.db
+*.sqlite3
+data/raw/
+*.fasta
+*.fna
+
+# 6. IDE configuration
+.vscode/
+.idea/
+*.swp
+
+# 7. Others
+README.md
+.coverage
+tests/
+monitoring/
