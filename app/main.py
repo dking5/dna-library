@@ -42,9 +42,12 @@ app.add_middleware(SlowAPIMiddleware)
 
 @app.get("/health/redis")
 async def check_redis():
-    is_alive = await redis_manager.client.ping()
-    return {"redis_active": is_alive}
-
+    try:
+        is_alive = await redis_manager.client.ping()
+        return {"redis_active": is_alive}
+    except Exception as e:
+        print(f"Error occurred while checking Redis: {e}")
+        return {"redis_active": False}
 
 app.include_router(gene_router, prefix="/api/v1/genes", tags=["Genes Management"])
 
